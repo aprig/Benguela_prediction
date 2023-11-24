@@ -59,7 +59,7 @@ jobs:
           PASSWORD: ${{ secrets.MY_PASSWORD }}
         if: ${{ always() }}
         run: |
-          jupyter nbconvert --ExecutePreprocessor.timeout=2000 --execute automatic_time_series_SST.ipynb --output-dir='./ci_out' --to html
+          jupyter nbconvert --ExecutePreprocessor.timeout=2000 --execute test_read_data_interpolate.ipynb --output-dir='./ci_out' --to html
 
       
       - name: Upload notebook
@@ -72,7 +72,7 @@ jobs:
         run: |
           mkdir -p ./public
           cp ci_out/*.html ./public/.
-          echo '<meta HTTP-EQUIV="REFRESH" content="0; url=automatic_time_series_SST.html">' > ./public/index.html
+          echo '<meta HTTP-EQUIV="REFRESH" content="0; url=test_read_data_interpolate.html">' > ./public/index.html
       - name: Deploy pages
         uses: peaceiris/actions-gh-pages@v3
         if: github.ref == 'refs/heads/main'
