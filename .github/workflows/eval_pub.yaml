@@ -49,8 +49,8 @@ jobs:
 
       - name: Execute Jupyter Notebook
         env:
-          USERNAME: ${{ secrets.MY_USERNAME }}
-          PASSWORD: ${{ secrets.MY_PASSWORD }}
+          USERNAME: ${{ secrets.LOGIN }}
+          PASSWORD: ${{ secrets.PASSWORD }}
         if: ${{ always() }}
         run: |
           jupyter nbconvert --ExecutePreprocessor.timeout=2000 --execute test_read_data_interpolate.ipynb --output-dir='./ci_out' --to html
