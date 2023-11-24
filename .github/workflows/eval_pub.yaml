@@ -1,0 +1,83 @@
+name: eval and publish notebook
+
+on:
+  schedule:
+
+    - cron: "0 12 * * MON" # everyday monday at 8am
+    - cron: "0 12 * * TUE" # everyday monday at 8am
+    - cron: "0 12 * * WED" # everyday monday at 8am
+    - cron: "0 12 * * THU" # everyday monday at 8am
+    - cron: "0 12 * * FRI" # everyday monday at 8am
+    - cron: "0 12 * * SAT" # everyday monday at 8am
+    - cron: "0 12 * * SUN" # everyday monday at 8am
+    
+
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  run_forecast:
+    runs-on: ubuntu-20.04
+    steps:
+      
+      - name: Copy Repository Contents
+        uses: actions/checkout@v2
+  
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+  
+      - name: install dependencies
+        run: |
+          sudo apt update
+          sudo apt install libgeos-dev
+
+
+          python3 -m pip install --upgrade pip
+          pip3 install -r ./requirements.txt
+          python3 -m ipykernel install --user --name python3
+          python3 -m pip install -I jinja2==3.0.3
+          python3 -m pip install https://github.com/pydap/pydap/archive/refs/tags/3.3.0.tar.gz
+
+          sudo chmod -R 777 .
+
+      - name: Execute Jupyter Notebook
+        env:
+          USERNAME: ${{ secrets.LOGIN }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          
+      - name: Complete listing of data dirs
+        if: ${{ always() }}
+        run: |
+          du -sh *
+      - name: Convert to HTML
+        if: ${{ always() }}
+        run: |
+          jupyter nbconvert --ExecutePreprocessor.timeout=2000 --execute test_read_data_interpolate.ipynb  --output-dir='./ci_out' --to html
+
+      
+      - name: Upload notebook
+        uses: actions/upload-artifact@v1
+        if: ${{ always() }}
+        with:
+          name: ci_out
+          path: ci_out/
+      - name: Prepare pages
+        run: |
+          mkdir -p ./public
+          cp ci_out/*.html ./public/.
+          echo '<meta HTTP-EQUIV="REFRESH" content="0; url=automatic_time_series_SST.html">' > ./public/index.html
+      - name: Deploy pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          force_orphan: true
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
