@@ -53,10 +53,13 @@ jobs:
         if: ${{ always() }}
         run: |
           du -sh *
-      - name: Convert to HTML
+      - name: Execute Jupyter Notebook
+        env:
+          USERNAME: ${{ secrets.MY_USERNAME }}
+          PASSWORD: ${{ secrets.MY_PASSWORD }}
         if: ${{ always() }}
         run: |
-          jupyter nbconvert --ExecutePreprocessor.timeout=2000 --execute test_read_data_interpolate.ipynb  --output-dir='./ci_out' --to html
+          jupyter nbconvert --ExecutePreprocessor.timeout=2000 --execute automatic_time_series_SST.ipynb --output-dir='./ci_out' --to html
 
       
       - name: Upload notebook
