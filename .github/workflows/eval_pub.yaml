@@ -23,7 +23,10 @@ jobs:
   run_forecast:
     runs-on: ubuntu-20.04
     steps:
-      
+      - name: Execute Jupyter Notebook
+        env:
+          USERNAME: ${{ secrets.LOGIN }}
+          PASSWORD: ${{ secrets.PASSWORD }}
       - name: Copy Repository Contents
         uses: actions/checkout@v2
   
@@ -45,11 +48,6 @@ jobs:
           python3 -m pip install https://github.com/pydap/pydap/archive/refs/tags/3.3.0.tar.gz
 
           sudo chmod -R 777 .
-
-      - name: Execute Jupyter Notebook
-        env:
-          USERNAME: ${{ secrets.LOGIN }}
-          PASSWORD: ${{ secrets.PASSWORD }}
           
       - name: Complete listing of data dirs
         if: ${{ always() }}
