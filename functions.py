@@ -144,3 +144,101 @@ def plot_last3months(temp):
     ax[5].tick_params(labelsize=ftz)
 
 
+def prepros_forecast(var,for_file):
+    Lead_max=4
+    Lead=np.arange(1,Lead_max+1)
+
+    # Open observations
+    f = xr.open_dataset('./data/dataset-armor-3d-nrt-monthly_2019_2023_inter_det_ML_ABA_ATL3.nc')
+    date = f.time
+    last = date[-1]
+    day = date[-1].dt.day; month = date[-1].dt.month; year = date[-1].dt.year
+    date = f.time.sel(time=slice('2020-01-01',datetime.date(year, month, day+10)))
+    obs = f.get(var).sel(time=slice('2020-01-01',datetime.date(year, month, day+10)))
+    
+    # Open forcasts
+    da = xr.DataArray(np.arange(len(date)+Lead_max), dims=["x"])
+    da_ = xr.DataArray(np.arange(Lead_max+1), dims=["x"])
+    date_forcast = np.datetime64(str(date[0].dt.strftime('%Y-%m-%d').values)+'T00:00:00.000000000') + da.astype("timedelta64[M]")
+    date_forecast_last = np.datetime64(str(date[len(date)-1].dt.strftime('%Y-%m-%d').values)+'T00:00:00.000000000') + da_.astype("timedelta64[M]")
+    NbY = pd.DatetimeIndex(date_forcast).year[-1]-pd.DatetimeIndex(date_forcast).year[0]
+    TS_cnn = np.zeros((5,NbY+1,len(date_forcast)))*np.nan
+    for_cnn = np.zeros((5,len(date_forecast_last)))*np.nan
+    for_cnn[:,0] = obs[-1:]
+    for i in range(0,Lead_max,1):    # forecast lead
+        for j in range(1,13,1):  # season target
+            for k in range(0,5,1):
+                f_ = open('./output/bn_'+str(i+1)+'month_'+str(j)+'_'+str(for_file)+'/EN'+str(k+1)+'/result.gdat','r')
+                cnn = np.fromfile(f_, dtype=np.float32)[:]
+                for l in range(len(cnn)):
+                    TS_cnn[k,i,l*12+j-1] = (cnn[l]*np.nanstd(f.get(var),0))+np.nanmean(f.get(var),0)
+        for_cnn[:,i+1] = TS_cnn[:,i,-Lead_max+i]
+
+    OBS = xr.Dataset({"obs": (("time"), obs.data)},
+          coords={"time": date})
+
+    da = xr.DataArray(TS_cnn, dims=['member','lead','time'])
+    da = da.assign_coords({'member': [1, 2, 3, 4, 5],'lead': np.arange(1,Lead_max+1),'time': np.array(date_forcast)})
+    TS = xr.Dataset({"cnn": (("member","lead","time"), da.data)},
+         coords={"member": [1, 2, 3, 4, 5], "lead": np.arange(1,Lead_max+1), "time": np.array(date_forcast)})
+
+    da = xr.DataArray(for_cnn, dims=['member','time'])
+    da = da.assign_coords({'member': [1, 2, 3, 4, 5],'time': np.array(date_forecast_last)})
+    forecasts = xr.Dataset({"cnn": (("member","time"), da.data)},
+         coords={"member": [1, 2, 3, 4, 5], "time": np.array(date_forecast_last)})
+
+    
+    return OBS,TS,forecasts
+
+
+def plot_forecasts(OBS,forecasts,zone):
+    date = OBS.time
+    day = date[-1].dt.day; month = date[-1].dt.month; year = date[-1].dt.year
+    
+    plt.subplot2grid((2,3),(0,0),rowspan=1,colspan=3)
+    
+    plt.plot(OBS.time.sel(time=slice(date[-6].dt.strftime('%Y-%m-%d').values,datetime.date(year, month, day+10))),
+             OBS.obs.sel(time=slice(date[-6].dt.strftime('%Y-%m-%d').values,datetime.date(year, month, day+10))),'k')  
+
+    for k in range(0,5,1):
+        plt.plot(forecasts.time,forecasts.cnn[k,:],'darkorange')
+    plt.axhline(y=0,color='grey',linewidth=0.7,alpha=0.6,linestyle = 'dashed')
+    plt.plot(forecasts.time,np.nanmean(forecasts.cnn,0),'orangered')
+
+    model_list = ['OBS','Forecast']
+    plt.xlabel('Time', fontsize=7.5)
+    plt.ylabel('SST anomalies', fontsize=7.5)
+    plt.title('Forecasts, 1-4 months from last observation - Region: '+str(zone), fontsize=9)
+    plt.legend(model_list,loc='best', prop={'size':7.5}, ncol=5)
+    plt.tick_params(labelsize=7.5,direction='in',length=3,width=0.4,color='black')
+    plt.tight_layout()
+    
+def plot_TS(OBS,forecasts,zone):
+    date = forecasts.time
+    day = date[-1].dt.day; month = date[-1].dt.month; year = date[-1].dt.year
+    forC = np.nanmean(forecasts.cnn,0)
+    Lead_max=len(forC)
+    
+    plt.subplot2grid((2,3),(1,0),rowspan=1,colspan=3)
+    model_list = ['OBS','Pred Lead1','Pred Lead2','Pred Lead3','Pred Lead4']
+    c=np.linspace(start=1, stop=0.2, num=Lead_max)
+    plt.plot(OBS.time.sel(time=slice('2020-01-01',datetime.date(year, month, day+10))),OBS.obs.sel(time=slice('2020-01-01',datetime.date(year, month, day+10))),'k')
+    for j in range(0,Lead_max): 
+        plt.plot(forecasts.time,forC[j,:],'orangered', alpha=c[j])
+    #plt.plot(forecasts.time,forC*0,color='grey',linewidth=0.7,alpha=0.6,linestyle = 'dashed')
+    plt.axhline(y=0,color='grey',linewidth=0.7,alpha=0.6,linestyle = 'dashed')
+    plt.axhline(y=np.nanstd(OBS.obs.sel(time=slice('2020-01-01',datetime.date(year, month, day+10))),0),color='grey',linewidth=0.7,alpha=0.6,linestyle = ':')
+    plt.axhline(y=-1*np.nanstd(OBS.obs.sel(time=slice('2020-01-01',datetime.date(year, month, day+10))),0),color='grey',linewidth=0.7,alpha=0.6,linestyle = ':')
+    
+    #plt.plot(forecasts.time,forC/forC*np.nanstd(OBS.obs.sel(time=slice('2020-01-01',datetime.date(year, month, day+10))),0),color='grey',linewidth=0.7,alpha=0.6,linestyle = ':')
+    #plt.plot(forecasts.time,-1*forC/forC*np.nanstd(OBS.obs.sel(time=slice('2020-01-01',datetime.date(year, month, day+10))),0),color='grey',linewidth=0.7,alpha=0.6,linestyle = ':')
+    plt.xlabel('Time', fontsize=7.5)
+    plt.xlim([datetime.date(2020, 1, 1), datetime.date(year, month, day+10)])
+    plt.ylim([-1.2,1.8])
+    plt.ylabel('SST anomalies', fontsize=7.5)
+    plt.title('CNN Forecasts in '+str(zone), fontsize=9)
+    plt.legend(model_list,loc='best', prop={'size':7.5}, ncol=5)
+    plt.tick_params(labelsize=7.5,direction='in',length=3,width=0.4,color='black')
+    plt.tight_layout()
+
+
