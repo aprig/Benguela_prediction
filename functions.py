@@ -19,6 +19,9 @@ now = datetime.now()
 print(now)
 date_time = now.strftime("%d/%m/%Y")
 import matplotlib
+from netCDF4 import Dataset
+import matplotlib.pyplot as plt
+import datetime
 
 import requests
 
