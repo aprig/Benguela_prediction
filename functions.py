@@ -161,7 +161,8 @@ def prepros_forecast(var,for_file):
     da_ = xr.DataArray(np.arange(Lead_max+1), dims=["x"])
     date_forcast = np.datetime64(str(date[0].dt.strftime('%Y-%m-%d').values)+'T00:00:00.000000000') + da.astype("timedelta64[M]")
     date_forecast_last = np.datetime64(str(date[len(date)-1].dt.strftime('%Y-%m-%d').values)+'T00:00:00.000000000') + da_.astype("timedelta64[M]")
-    NbY = pd.DatetimeIndex(date_forcast).year[-1]-pd.DatetimeIndex(date_forcast).year[0]
+    NbY = int(date_forcast.dt.year[-1]-date_forcast.dt.year[0])
+    
     TS_cnn = np.zeros((5,NbY+1,len(date_forcast)))*np.nan
     for_cnn = np.zeros((5,len(date_forecast_last)))*np.nan
     for_cnn[:,0] = obs[-1:]
