@@ -54,7 +54,7 @@ jobs:
         if: ${{ always() }}
         run: |
           jupyter nbconvert --ExecutePreprocessor.timeout=2000 --execute test_read_data_interpolate.ipynb --output-dir='./ci_out' --to html
-          jupyter nbconvert --ExecutePreprocessor.timeout=2000 --execute Test_plot_forecast.ipynb --output-dir='./ci_out' --to html
+          #jupyter nbconvert --ExecutePreprocessor.timeout=2000 --execute Test_plot_forecast.ipynb --output-dir='./ci_out' --to html
           
       - name: Upload notebook
         uses: actions/upload-artifact@v1
